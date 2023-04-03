@@ -21,9 +21,9 @@
 // tmc library global variables
 uart_port_t tmcUART = UART_NUM_2;
 
-void tmc_init(uart_port_t uart) {
+void tmc_begin(uart_port_t uart) {
     const uart_config_t uart_config = {
-        .baud_rate = 115200,
+        .baud_rate = 250000,
         .data_bits = UART_DATA_8_BITS,
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
@@ -32,7 +32,7 @@ void tmc_init(uart_port_t uart) {
     };
     // We won't use a buffer for sending data.
     tmcUART = uart;
-    uart_driver_install(tmcUART, BUF_SIZE,0, 0, NULL, 0);
+    uart_driver_install(tmcUART, BUF_SIZE, 0, 0, NULL, 0); // we not use TX buffer, so uart_write_bytes is blocking
     uart_param_config(tmcUART, &uart_config);
     uart_set_pin(tmcUART, GPIO_NUM_17, GPIO_NUM_18, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     
@@ -40,9 +40,29 @@ void tmc_init(uart_port_t uart) {
     tmc_fillCRC8Table(0x07, true, 1);
 }
 
-bool tmc_writeRead(uint8_t *data, size_t writeLength, size_t readLength){
-    // TBD
-    return false;
+void tmc_end() {
+    uart_driver_delete(tmcUART);
+}
+
+// returns false if operation fails
+bool tmc_writeRead(uint8_t *data, size_t writeLen, size_t readLen){
+    uart_flush_input(tmcUART);
+    int txBytes = uart_write_bytes(tmcUART, data, writeLen);
+    if (txBytes !=writeLen){
+        ESP_LOGI("UART","TX write_bytes FAILED");
+        return false;
+    }
+    int rxBytes = uart_read_bytes(tmcUART, data, writeLen, 4/portTICK_PERIOD_MS);
+    if (rxBytes != writeLen) {
+        ESP_LOGI("UART","RX read_bytes echo FAILED");
+        return false;
+    }
+    rxBytes = uart_read_bytes(tmcUART, data, readLen, 4/portTICK_PERIOD_MS);
+    if (rxBytes != readLen) {
+        ESP_LOGI("UART","RX read_bytes received FAILED");
+        return false;
+    }
+    return true;
 }
 
 void tmc_writeData(uint8_t addr, uint8_t reg, uint32_t data)
@@ -50,7 +70,7 @@ void tmc_writeData(uint8_t addr, uint8_t reg, uint32_t data)
 	uint8_t buf[8];
 
 	buf[0] = 0x05;
-	buf[1] = addr;
+	buf[1] = addr & 0x03;
 	buf[2] = (reg & 0x7F) | 0x80; // write flag
 	buf[3] = (data >> 24) & 0xFF;
 	buf[4] = (data >> 16) & 0xFF;
@@ -66,7 +86,7 @@ uint32_t tmc_readData(uint8_t addr, uint8_t reg)
 	uint8_t buf[8];
 
 	buf[0] = 0x05;
-	buf[1] = addr;
+	buf[1] = addr & 0x03;
 	buf[2] = reg & 0x7F;
 	buf[3] = tmc_CRC8(buf, 3,1);
 
@@ -91,43 +111,20 @@ uint32_t tmc_readData(uint8_t addr, uint8_t reg)
 	return ((uint32_t)buf[3] << 24) | ((uint32_t)buf[4] << 16) | (buf[5] << 8) | buf[6];
 }
 
-int sendData(const char* logName, const char* data)
-{
-    const int len = strlen(data);
-    const int txBytes = uart_write_bytes(UART_NUM_0, data, len);
-    ESP_LOGI(logName, "Wrote %d bytes", txBytes);
-    return txBytes;
-}
-
-static void tx_task(void *arg)
-{
-    static const char *TX_TASK_TAG = "TX_TASK";
-    esp_log_level_set(TX_TASK_TAG, ESP_LOG_INFO);
-    while (1) {
-        sendData(TX_TASK_TAG, "Hello world");
-        vTaskDelay(2000 / portTICK_PERIOD_MS);
-    }
-}
-
-static void rx_task(void *arg)
-{
-    static const char *RX_TASK_TAG = "RX_TASK";
-    esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
-    uint8_t* data = (uint8_t*) malloc(BUF_SIZE+1);
-    while (1) {
-        const int rxBytes = uart_read_bytes(UART_NUM_0, data, BUF_SIZE, 1000 / portTICK_PERIOD_MS);
-        if (rxBytes > 0) {
-            data[rxBytes] = 0;
-            ESP_LOGI(RX_TASK_TAG, "Read %d bytes: '%s'", rxBytes, data);
-            ESP_LOG_BUFFER_HEXDUMP(RX_TASK_TAG, data, rxBytes, ESP_LOG_INFO);
-        }
-    }
-    free(data);
-}
-
 void app_main(void)
 {
-    tmc_init(UART_NUM_2);
-    // xTaskCreate(rx_task, "uart_rx_task", 4096, NULL, configMAX_PRIORITIES, NULL);
-    // xTaskCreate(tx_task, "uart_tx_task", 4096, NULL, configMAX_PRIORITIES-1, NULL);
+    tmc_begin(UART_NUM_2);
+    if (uart_is_driver_installed(UART_NUM_2)) {
+        ESP_LOGI("MAIN","UART driver installed");
+    } else {
+        ESP_LOGI("MAIN","UART driver instalation FAILED");
+    }
+    tmc_end();
+    ESP_LOGI("MAIN","End of test");
+    while (1)
+    {
+        vTaskDelay(1000);
+        ESP_LOGI("MAIN","Tick ...");
+    }
+   
 }
