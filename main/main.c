@@ -52,12 +52,12 @@ bool tmc_writeRead(uint8_t *data, size_t writeLen, size_t readLen){
         ESP_LOGI("UART","TX write_bytes FAILED");
         return false;
     }
-    int rxBytes = uart_read_bytes(tmcUART, data, writeLen, 4/portTICK_PERIOD_MS);
+    int rxBytes = uart_read_bytes(tmcUART, data, writeLen, 1000/portTICK_PERIOD_MS);
     if (rxBytes != writeLen) {
-        ESP_LOGI("UART","RX read_bytes echo FAILED");
+        ESP_LOGI("UART","RX read_bytes echo FAILED (received %d out of %d)", rxBytes,writeLen);
         return false;
-    }
-    rxBytes = uart_read_bytes(tmcUART, data, readLen, 4/portTICK_PERIOD_MS);
+    }    
+    rxBytes = uart_read_bytes(tmcUART, data, readLen, 1000/portTICK_PERIOD_MS);
     if (rxBytes != readLen) {
         ESP_LOGI("UART","RX read_bytes received FAILED");
         return false;
@@ -65,7 +65,8 @@ bool tmc_writeRead(uint8_t *data, size_t writeLen, size_t readLen){
     return true;
 }
 
-void tmc_writeData(uint8_t addr, uint8_t reg, uint32_t data)
+// returns true if ok
+bool tmc_writeData(uint8_t addr, uint8_t reg, uint32_t data)
 {
 	uint8_t buf[8];
 
@@ -78,10 +79,11 @@ void tmc_writeData(uint8_t addr, uint8_t reg, uint32_t data)
 	buf[6] = data & 0xFF;
 	buf[7] = tmc_CRC8(buf, 7,1);
 
-	tmc_writeRead(&buf[0], 8, 0);
+	return tmc_writeRead(&buf[0], 8, 0);
 }
 
-uint32_t tmc_readData(uint8_t addr, uint8_t reg)
+// returns true if ok
+bool tmc_readData(uint8_t addr, uint8_t reg, uint32_t *data) 
 {
 	uint8_t buf[8];
 
@@ -90,25 +92,30 @@ uint32_t tmc_readData(uint8_t addr, uint8_t reg)
 	buf[2] = reg & 0x7F;
 	buf[3] = tmc_CRC8(buf, 3,1);
 
-	tmc_writeRead(&buf[0], 4, 8);
+    *data = 0;
+
+	if (!tmc_writeRead(&buf[0], 4, 8)){
+        return false;
+    };
 
 	// Byte 0: Sync nibble correct?
 	if (buf[0] != 0x05)
-		return 0;
+		return false;
 
 	// Byte 1: Master address correct?
 	if (buf[1] != 0xFF)
-		return 0;
+		return false;
 
 	// Byte 2: Address correct?
 	if (buf[2] != (reg & 0x7F))
-		return 0;
+		return false;
 
 	// Byte 7: CRC correct?
 	if (buf[7] != tmc_CRC8(buf, 7, 1))
-		return 0;
+		return false;
 
-	return ((uint32_t)buf[3] << 24) | ((uint32_t)buf[4] << 16) | (buf[5] << 8) | buf[6];
+	*data = ((uint32_t)buf[3] << 24) | ((uint32_t)buf[4] << 16) | (buf[5] << 8) | buf[6];
+    return true;
 }
 
 void app_main(void)
@@ -119,8 +126,24 @@ void app_main(void)
     } else {
         ESP_LOGI("MAIN","UART driver instalation FAILED");
     }
+    uint32_t status;
+    if (tmc_readData(0,0x06,&status)){    
+        ESP_LOGI("MAIN","0x06 - Driver IOIN: %lX",status);
+        ESP_LOGI("MAIN","============================");        
+        ESP_LOGI("MAIN","       ENN - %d",(uint8_t)(status & 0x001));
+        ESP_LOGI("MAIN","       MS1 - %d",(uint8_t)((status >> 2) & 0x001));
+        ESP_LOGI("MAIN","       MS2 - %d",(uint8_t)((status >> 3) & 0x001));
+        ESP_LOGI("MAIN","      DIAG - %d",(uint8_t)((status >> 4) & 0x001));
+        ESP_LOGI("MAIN","  PDN_UART - %d",(uint8_t)((status >> 6) & 0x001));
+        ESP_LOGI("MAIN","      STEP - %d",(uint8_t)((status >> 7) & 0x001));
+        ESP_LOGI("MAIN","SPREAD_ENN - %d",(uint8_t)((status >> 8) & 0x001));
+        ESP_LOGI("MAIN","       DIR - %d",(uint8_t)((status >> 9) & 0x001));
+        ESP_LOGI("MAIN","   VERSION - %x",(uint8_t)(status >> 24));
+    } else {
+        ESP_LOGI("MAIN","0x06 - Driver IOIN read failed");
+    }
     tmc_end();
-    ESP_LOGI("MAIN","End of test");
+    ESP_LOGI("MAIN","UART driver removed");
     while (1)
     {
         vTaskDelay(1000);
