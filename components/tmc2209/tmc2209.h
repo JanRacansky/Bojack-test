@@ -6,7 +6,7 @@
 #include "driver/uart.h"
 #include "driver/gpio.h"
 
-void tmc2209_begin(uart_port_t uart);
+bool tmc2209_begin(uart_port_t uart,int baud_rate,int tx_io_num, int rx_io_num);
 void tmc2209_end();
 
 bool tmc2209_writeData(uint8_t addr, uint8_t reg, uint32_t data);

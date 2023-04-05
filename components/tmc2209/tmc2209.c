@@ -6,9 +6,10 @@
 // tmc library global variables
 uart_port_t tmcUART = UART_NUM_2;
 
-void tmc2209_begin(uart_port_t uart) {
+// returns ture if ok, uses ESP_LOGI to log errors
+bool tmc2209_begin(uart_port_t uart,int baud_rate,int tx_io_num, int rx_io_num) {
     const uart_config_t uart_config = {
-        .baud_rate = 250000,
+        .baud_rate = baud_rate,
         .data_bits = UART_DATA_8_BITS,
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
@@ -19,10 +20,16 @@ void tmc2209_begin(uart_port_t uart) {
     tmcUART = uart;
     uart_driver_install(tmcUART, BUF_SIZE, 0, 0, NULL, 0); // we not use TX buffer, so uart_write_bytes is blocking
     uart_param_config(tmcUART, &uart_config);
-    uart_set_pin(tmcUART, GPIO_NUM_17, GPIO_NUM_18, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-    
-    // CRC table initialization 
-    tmc_fillCRC8Table(0x07, true, 1);
+    uart_set_pin(tmcUART, tx_io_num, rx_io_num, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    if (uart_is_driver_installed(tmcUART)) {
+        ESP_LOGI("MAIN","UART driver installed");
+        // CRC table initialization 
+        tmc_fillCRC8Table(0x07, true, 1);
+        return true;
+    } else {
+        ESP_LOGI("MAIN","UART driver instalation FAILED");
+        return false;
+    }
 }
 
 void tmc2209_end() {
