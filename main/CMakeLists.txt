@@ -1,3 +1,3 @@
 idf_component_register(SRCS "main.c"
-                    REQUIRES CRC driver
+                    REQUIRES tmc2209 driver
                     INCLUDE_DIRS ".")
