@@ -22,12 +22,12 @@ bool tmc2209_begin(uart_port_t uart,int baud_rate,int tx_io_num, int rx_io_num) 
     uart_param_config(tmcUART, &uart_config);
     uart_set_pin(tmcUART, tx_io_num, rx_io_num, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     if (uart_is_driver_installed(tmcUART)) {
-        ESP_LOGI("MAIN","UART driver installed");
+        ESP_LOGI("TMC","UART driver installed");
         // CRC table initialization 
         tmc_fillCRC8Table(0x07, true, 1);
         return true;
     } else {
-        ESP_LOGI("MAIN","UART driver instalation FAILED");
+        ESP_LOGI("TMC","UART driver instalation FAILED");
         return false;
     }
 }
@@ -37,7 +37,7 @@ void tmc2209_end() {
 }
 
 // returns ture if ok, uses ESP_LOGI to log errors
-bool tmc2209_writeRead(uint8_t *data, size_t writeLen, size_t readLen){
+bool tmc2209_Transfer(uint8_t *data, size_t writeLen, size_t readLen){
     uart_flush_input(tmcUART);
     int txBytes = uart_write_bytes(tmcUART, data, writeLen);
     if (txBytes !=writeLen){
@@ -69,9 +69,9 @@ bool tmc2209_writeData(uint8_t addr, uint8_t reg, uint32_t data)
 	buf[4] = (data >> 16) & 0xFF;
 	buf[5] = (data >> 8) & 0xFF;
 	buf[6] = data & 0xFF;
-	buf[7] = tmc_CRC8(buf, 7,1);
+	buf[7] = tmc_CRC8(buf, 7, 1);
 
-	return tmc2209_writeRead(&buf[0], 8, 0);
+	return tmc2209_Transfer(&buf[0], 8, 0);
 }
 
 // returns ture if ok, uses ESP_LOGI to log errors
@@ -86,7 +86,7 @@ bool tmc2209_readData(uint8_t addr, uint8_t reg, uint32_t *data)
 
     *data = 0;
 
-	if (!tmc2209_writeRead(&buf[0], 4, 8)){
+	if (!tmc2209_Transfer(&buf[0], 4, 8)){
         return false;
     };
 
