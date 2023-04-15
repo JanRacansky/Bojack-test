@@ -15,28 +15,71 @@
 void app_main(void)
 {
     if (tmc2209_begin(UART_NUM_2, 200000, GPIO_NUM_17, GPIO_NUM_18)){   
-        uint32_t status;
-        if (tmc2209_readData(0,0x06,&status)){    
-            ESP_LOGI("MAIN","0x06 - Driver IOIN: %lX",status);
+        // test status registru - version musí být 0x21
+        union tmc2209_ioin status;
+        if (tmc2209_readData(0,0x06,&status.d)){    
+            ESP_LOGI("MAIN","0x06 - Driver IOIN: %lX",status.d);
             ESP_LOGI("MAIN","============================");        
-            ESP_LOGI("MAIN","       ENN - %d",(uint8_t)(status & 0x001));
-            ESP_LOGI("MAIN","       MS1 - %d",(uint8_t)((status >> 2) & 0x001));
-            ESP_LOGI("MAIN","       MS2 - %d",(uint8_t)((status >> 3) & 0x001));
-            ESP_LOGI("MAIN","      DIAG - %d",(uint8_t)((status >> 4) & 0x001));
-            ESP_LOGI("MAIN","  PDN_UART - %d",(uint8_t)((status >> 6) & 0x001));
-            ESP_LOGI("MAIN","      STEP - %d",(uint8_t)((status >> 7) & 0x001));
-            ESP_LOGI("MAIN","SPREAD_ENN - %d",(uint8_t)((status >> 8) & 0x001));
-            ESP_LOGI("MAIN","       DIR - %d",(uint8_t)((status >> 9) & 0x001));
-            ESP_LOGI("MAIN","   VERSION - %x",(uint8_t)(status >> 24));
+            ESP_LOGI("MAIN","       ENN - %d",status.enn);
+            ESP_LOGI("MAIN","       MS1 - %d",status.ms1);
+            ESP_LOGI("MAIN","       MS2 - %d",status.ms2);
+            ESP_LOGI("MAIN","      DIAG - %d",status.diag);
+            ESP_LOGI("MAIN","  PDN_UART - %d",status.pdn_uart);
+            ESP_LOGI("MAIN","      STEP - %d",status.step);
+            ESP_LOGI("MAIN","SPREAD_ENN - %d",status.spread_enn);
+            ESP_LOGI("MAIN","       DIR - %d",status.dir);
+            ESP_LOGI("MAIN","   VERSION - %X",status.version);
         } else {
             ESP_LOGI("MAIN","0x06 - Driver IOIN read failed");
         }
-        tmc2209_end();
-        ESP_LOGI("MAIN","UART driver removed");
+        if (status.version!=0x21){
+            ESP_LOGI("MAIN","0x06 - IOIN.vertsion != 0x21");
+        } else {
+            union tmc2209_chopconf chopconf = { 
+                .d = 0,
+                .toff = 3, .hstrt = 5, .vsense = 1, .intpol = 1,    
+            };
+            ESP_LOGI("MAIN","CHOPCONF:= %lX",chopconf.d);
+            tmc2209_writeData(0,TMC2209_R_CHOPCONG_RW,chopconf.d);
+
+            union tmc2209_gconf gconf = {
+                .d = 0,
+                .pdn_disable = 1, .mstep_reg_select = 1, .multistep_filt = 1
+            };
+            ESP_LOGI("MAIN","GCONF:= %lX",gconf.d);
+            tmc2209_writeData(0,TMC2209_R_GCONF_RW,gconf.d);
+
+            union tmc2209_ihold_irun ihr = {
+                .d = 0,
+                .iholddelay = 1, .irun = 16, .ihold = 11
+            };
+            tmc2209_writeData(0,TMC2209_R_IHOLD_IRUN_W,ihr.d);
+            ESP_LOGI("MAIN","IHOLD_IRUN:= %lX",ihr.d);
+
+            union tmc2209_tpowerdown tpw = {
+                .d = 0,
+                .tpowerdown = 0x20
+            };
+            tmc2209_writeData(0,TMC2209_R_TPOWERDOWN_W,tpw.d);
+            ESP_LOGI("MAIN","TPOWERDOWN:= %lX",tpw.d);
+
+            union tmc2209_pwmconf pwm = {
+                .d=0,
+                .pwm_ofs = 36, .pwm_freq = 1, .pwm_autoscale = 1, .pwm_autograd = 1, .pwm_reg = 1, .pwm_lim = 12
+            };
+            tmc2209_writeData(0,TMC2209_R_PWMCONF_RW,pwm.d);
+            ESP_LOGI("MAIN","PWMCONF:= %lX",pwm.d);
+            
+            chopconf.toff = 5; chopconf.tbl = 2; chopconf.hstrt = 4; chopconf.hend = 0;
+            ESP_LOGI("MAIN","CHOPCONF:= %lX",chopconf.d);
+            tmc2209_writeData(0,TMC2209_R_CHOPCONG_RW,chopconf.d);
+        }
     }
     while (1)
     {
         vTaskDelay(1000);
     }
+    tmc2209_end();
+    ESP_LOGI("MAIN","UART driver removed");
    
 }
