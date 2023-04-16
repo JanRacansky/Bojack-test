@@ -34,7 +34,7 @@ void app_main(void)
             } else {
                 union tmc2209_chopconf chopconf = { 
                     .d = 0,
-                    .toff = 3, .hstrt = 5, .vsense = 1, .intpol = 1, .tbl = 2   
+                    .toff = 0, .hstrt = 5, .vsense = 1, .intpol = 1, .tbl = 2   
                 };
                 ESP_LOGI("MAIN","CHOPCONF:= %lX",chopconf.d);
                 tmc2209_writeData(0,TMC2209_R_CHOPCONG_RW,chopconf.d);
@@ -62,7 +62,7 @@ void app_main(void)
 
                 union tmc2209_pwmconf pwm = {
                     .d=0,
-                    .pwm_ofs = 36, .pwm_freq = 1, .pwm_autoscale = 1, .pwm_autograd = 1, .pwm_reg = 1, .pwm_lim = 12
+                    .pwm_ofs = 36, .pwm_freq = 1, .pwm_autoscale = 0, .pwm_autograd = 0, .pwm_reg = 1, .pwm_lim = 12
                 };
                 tmc2209_writeData(0,TMC2209_R_PWMCONF_RW,pwm.d);
                 ESP_LOGI("MAIN","PWMCONF:= %lX",pwm.d);
