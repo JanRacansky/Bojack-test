@@ -29,50 +29,50 @@ void app_main(void)
             ESP_LOGI("MAIN","SPREAD_ENN - %d",status.spread_enn);
             ESP_LOGI("MAIN","       DIR - %d",status.dir);
             ESP_LOGI("MAIN","   VERSION - %X",status.version);
+            if (status.version!=0x21){
+                ESP_LOGI("MAIN","0x06 - IOIN.vertsion != 0x21");
+            } else {
+                union tmc2209_chopconf chopconf = { 
+                    .d = 0,
+                    .toff = 3, .hstrt = 5, .vsense = 1, .intpol = 1, .tbl = 2   
+                };
+                ESP_LOGI("MAIN","CHOPCONF:= %lX",chopconf.d);
+                tmc2209_writeData(0,TMC2209_R_CHOPCONG_RW,chopconf.d);
+
+                union tmc2209_gconf gconf = {
+                    .d = 0,
+                    .pdn_disable = 1, .mstep_reg_select = 1, .multistep_filt = 1
+                };
+                ESP_LOGI("MAIN","GCONF:= %lX",gconf.d);
+                tmc2209_writeData(0,TMC2209_R_GCONF_RW,gconf.d);
+
+                union tmc2209_ihold_irun ihr = {
+                    .d = 0,
+                    .iholddelay = 1, .irun = 16, .ihold = 11    // set irun=31, ihold=16 for full power
+                };
+                tmc2209_writeData(0,TMC2209_R_IHOLD_IRUN_W,ihr.d);
+                ESP_LOGI("MAIN","IHOLD_IRUN:= %lX",ihr.d);
+
+                union tmc2209_tpowerdown tpw = {
+                    .d = 0,
+                    .tpowerdown = 20
+                };
+                tmc2209_writeData(0,TMC2209_R_TPOWERDOWN_W,tpw.d);
+                ESP_LOGI("MAIN","TPOWERDOWN:= %lX",tpw.d);
+
+                union tmc2209_pwmconf pwm = {
+                    .d=0,
+                    .pwm_ofs = 36, .pwm_freq = 1, .pwm_autoscale = 1, .pwm_autograd = 1, .pwm_reg = 1, .pwm_lim = 12
+                };
+                tmc2209_writeData(0,TMC2209_R_PWMCONF_RW,pwm.d);
+                ESP_LOGI("MAIN","PWMCONF:= %lX",pwm.d);
+                
+                chopconf.toff = 5; chopconf.tbl = 2; chopconf.hstrt = 4; chopconf.hend = 0;
+                ESP_LOGI("MAIN","CHOPCONF:= %lX",chopconf.d);
+                tmc2209_writeData(0,TMC2209_R_CHOPCONG_RW,chopconf.d);
+            }
         } else {
             ESP_LOGI("MAIN","0x06 - Driver IOIN read failed");
-        }
-        if (status.version!=0x21){
-            ESP_LOGI("MAIN","0x06 - IOIN.vertsion != 0x21");
-        } else {
-            union tmc2209_chopconf chopconf = { 
-                .d = 0,
-                .toff = 3, .hstrt = 5, .vsense = 1, .intpol = 1, .tbl = 2   
-            };
-            ESP_LOGI("MAIN","CHOPCONF:= %lX",chopconf.d);
-            tmc2209_writeData(0,TMC2209_R_CHOPCONG_RW,chopconf.d);
-
-            union tmc2209_gconf gconf = {
-                .d = 0,
-                .pdn_disable = 1, .mstep_reg_select = 1, .multistep_filt = 1
-            };
-            ESP_LOGI("MAIN","GCONF:= %lX",gconf.d);
-            tmc2209_writeData(0,TMC2209_R_GCONF_RW,gconf.d);
-
-            union tmc2209_ihold_irun ihr = {
-                .d = 0,
-                .iholddelay = 1, .irun = 16, .ihold = 11    // set irun=31, ihold=16 for full power
-            };
-            tmc2209_writeData(0,TMC2209_R_IHOLD_IRUN_W,ihr.d);
-            ESP_LOGI("MAIN","IHOLD_IRUN:= %lX",ihr.d);
-
-            union tmc2209_tpowerdown tpw = {
-                .d = 0,
-                .tpowerdown = 20
-            };
-            tmc2209_writeData(0,TMC2209_R_TPOWERDOWN_W,tpw.d);
-            ESP_LOGI("MAIN","TPOWERDOWN:= %lX",tpw.d);
-
-            union tmc2209_pwmconf pwm = {
-                .d=0,
-                .pwm_ofs = 36, .pwm_freq = 1, .pwm_autoscale = 1, .pwm_autograd = 1, .pwm_reg = 1, .pwm_lim = 12
-            };
-            tmc2209_writeData(0,TMC2209_R_PWMCONF_RW,pwm.d);
-            ESP_LOGI("MAIN","PWMCONF:= %lX",pwm.d);
-            
-            chopconf.toff = 5; chopconf.tbl = 2; chopconf.hstrt = 4; chopconf.hend = 0;
-            ESP_LOGI("MAIN","CHOPCONF:= %lX",chopconf.d);
-            tmc2209_writeData(0,TMC2209_R_CHOPCONG_RW,chopconf.d);
         }
     }
     while (1)
