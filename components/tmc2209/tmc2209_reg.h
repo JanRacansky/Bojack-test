@@ -59,6 +59,47 @@ union tmc2209_tpowerdown {
     };
 };
 
+#define TMC2209_R_TPWMTHRS_W    0x13
+union tmc2209_tpwmthrs {
+    uint32_t d;
+    struct 
+    {
+        uint tpwmthrs : 20;     // When the velocity exceeds the limit set by TPWMTHRS, the driver switches to SpreadCycle.
+                                // 0 = Disabled
+    };
+};
+
+#define TMC2209_R_VACTUAL_W     0x13
+union tmc2209_vactual {
+    uint32_t d;
+    struct 
+    {
+        int vactual : 24;      // 0: Normal operation. Driver reacts to STEP input.
+                                // !=0: Motor moves with the velocity given by VACTUAL. Step pulses can be monitored via INDEX output. 
+                                // The motor direction is controlled by the sign of VACTUAL.
+    };
+};
+
+#define TMC2209_R_TCOOLTHRS_W   0x14
+union tmc2209_tcoolthrs {
+    uint32_t d;
+    struct 
+    {
+        uint tcoolthrs : 20;    // This is the lower threshold velocity for switching on smart energy CoolStep and StallGuard to DIAG output
+    };
+};
+
+#define tmc2209_R_SGTHRS_W      0x40
+union tmc2209_sgthrs {
+    uint32_t d;
+    struct
+    {
+        uint sgthrs : 8;        // Detection threshold for stall. The StallGuard value SG_RESULT becomes compared to the double of this threshold.
+                                // A stall is signaled with SG_RESULT ≤ SGTHRS*2
+    };  
+};
+
+
 #define TMC2209_R_PWMCONF_RW    0x70
 union tmc2209_pwmconf {
     uint32_t d;
@@ -77,7 +118,25 @@ union tmc2209_pwmconf {
     };
 };
 
-#define TMC2209_R_IOIN      0x06
+#define TMC2209_R_COOLCONF_R  0x42
+union coolconf {
+    uint32_t d;
+    struct {
+        uint semin : 4;         // If the StallGuard4 result falls below SEMIN*32, the motor current becomes increased to reduce motor load angle.
+                                // 0 = CoolStep off
+        uint blank0 : 1;
+        uint seup : 2;          // Current increment per measured StallGuard value
+                                // 0b00 = 1. 0b01 = 2. 0b10 = 4, 0b11 = 8
+        uint blank1 : 1;
+        uint semax : 4;         // If the StallGuard4 result is equal to or above (SEMIN+SEMAX+1)*32, the motor current becomes decreased to save energy.
+        uint sedn : 2;          // 0 = for each 32 Stallguard values reduce by 1
+                                // 1 = for each 8, 2 = for each 2, 3 = for each 1
+        uint seimin : 1;        // minimum current for smart current control
+                                // 0 = 1/2 of IRUN (for URUN>10). 1 = 1/4 IRUN (for IRUN>20)
+    };
+};
+
+#define TMC2209_R_IOIN_R      0x06
 union tmc2209_ioin {
     uint32_t d;
     struct {
@@ -95,3 +154,4 @@ union tmc2209_ioin {
         uint version : 8;       // should be always 0x21
     };
 };
+

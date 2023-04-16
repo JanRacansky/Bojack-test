@@ -17,7 +17,7 @@ void app_main(void)
     if (tmc2209_begin(UART_NUM_2, 200000, GPIO_NUM_17, GPIO_NUM_18)){   
         // test status registru - version musí být 0x21
         union tmc2209_ioin status;
-        if (tmc2209_readData(0,0x06,&status.d)){    
+        if (tmc2209_readData(0,TMC2209_R_IOIN_R,&status.d)){    
             ESP_LOGI("MAIN","0x06 - Driver IOIN: %lX",status.d);
             ESP_LOGI("MAIN","============================");        
             ESP_LOGI("MAIN","       ENN - %d",status.enn);
@@ -37,7 +37,7 @@ void app_main(void)
         } else {
             union tmc2209_chopconf chopconf = { 
                 .d = 0,
-                .toff = 3, .hstrt = 5, .vsense = 1, .intpol = 1,    
+                .toff = 3, .hstrt = 5, .vsense = 1, .intpol = 1, .tbl = 2   
             };
             ESP_LOGI("MAIN","CHOPCONF:= %lX",chopconf.d);
             tmc2209_writeData(0,TMC2209_R_CHOPCONG_RW,chopconf.d);
@@ -51,14 +51,14 @@ void app_main(void)
 
             union tmc2209_ihold_irun ihr = {
                 .d = 0,
-                .iholddelay = 1, .irun = 16, .ihold = 11
+                .iholddelay = 1, .irun = 16, .ihold = 11    // set irun=31, ihold=16 for full power
             };
             tmc2209_writeData(0,TMC2209_R_IHOLD_IRUN_W,ihr.d);
             ESP_LOGI("MAIN","IHOLD_IRUN:= %lX",ihr.d);
 
             union tmc2209_tpowerdown tpw = {
                 .d = 0,
-                .tpowerdown = 0x20
+                .tpowerdown = 20
             };
             tmc2209_writeData(0,TMC2209_R_TPOWERDOWN_W,tpw.d);
             ESP_LOGI("MAIN","TPOWERDOWN:= %lX",tpw.d);
@@ -81,5 +81,4 @@ void app_main(void)
     }
     tmc2209_end();
     ESP_LOGI("MAIN","UART driver removed");
-   
 }
