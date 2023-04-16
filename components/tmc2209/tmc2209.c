@@ -51,7 +51,7 @@ bool tmc2209_Transfer(uint8_t *data, size_t writeLen, size_t readLen){
     }    
     rxBytes = uart_read_bytes(tmcUART, data, readLen, 1000/portTICK_PERIOD_MS);
     if (rxBytes != readLen) {
-        ESP_LOGI("TMC","RX read_bytes received FAILED");
+        ESP_LOGI("TMC","RX read_bytes received FAILED, (received %d out of %d)", rxBytes, readLen);
         return false;
     }
     return true;
