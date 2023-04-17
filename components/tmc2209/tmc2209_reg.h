@@ -69,7 +69,7 @@ union tmc2209_tpwmthrs {
     };
 };
 
-#define TMC2209_R_VACTUAL_W     0x13
+#define TMC2209_R_VACTUAL_W     0x22
 union tmc2209_vactual {
     uint32_t d;
     struct 

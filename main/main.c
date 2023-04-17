@@ -12,7 +12,7 @@
 #include "esp_log.h"
 #include "tmc2209.h"
 
-#define TMC_VCC_PIN GPIO_NUM_6
+#define TMC_EN_PIN GPIO_NUM_6
 
 bool TMConfError = true;    //  helper
 
@@ -52,7 +52,7 @@ void app_main(void)
 
                 union tmc2209_ihold_irun ihr = {
                     .d = 0,
-                    .iholddelay = 1, .irun = 16, .ihold = 11    // set irun=31, ihold=16 for full power
+                    .iholddelay = 1, .irun = 30, .ihold = 11    // set irun=31, ihold=16 for full power
                 };
                 tmc2209_writeData(0,TMC2209_R_IHOLD_IRUN_W,ihr.d);
                 ESP_LOGI("MAIN","IHOLD_IRUN:= %lX",ihr.d);
@@ -77,25 +77,28 @@ void app_main(void)
                 
                 TMConfError = false;
 
-                union tmc2209_vactual velocity = {
-                    .d = 0,
-                    .vactual = 0
-                };
-                gpio_set_direction(TMC_VCC_PIN, GPIO_MODE_OUTPUT);
+                gpio_set_direction(TMC_EN_PIN, GPIO_MODE_OUTPUT);
+                gpio_set_drive_capability(TMC_EN_PIN, GPIO_DRIVE_CAP_3);
             }
         } else {
             ESP_LOGI("MAIN","0x06 - Driver IOIN read failed");
             TMConfError = true;
         }
     }
+
+    union tmc2209_vactual velocity = {
+        .d = 0,
+        .vactual = 0
+    };
+
     while (1)
     {
         vTaskDelay(1000);
 
         if (!TMConfError) {
-            gpio_set_level(TMC_VCC_PIN, 0);
+            gpio_set_level(TMC_EN_PIN, 0);
             
-            velocity.vactual = 10;
+            velocity.vactual = 20000;
             tmc2209_writeData(0,TMC2209_R_VACTUAL_W,velocity.d);
             ESP_LOGI("MAIN","VACTUAL:= %lX",velocity.d);
 
@@ -105,7 +108,7 @@ void app_main(void)
             tmc2209_writeData(0,TMC2209_R_VACTUAL_W,velocity.d);
             ESP_LOGI("MAIN","VACTUAL:= %lX",velocity.d);
 
-            gpio_set_level(TMC_VCC_PIN, 1);
+            gpio_set_level(TMC_EN_PIN, 1);
         }
 
     }
