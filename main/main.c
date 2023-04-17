@@ -12,9 +12,13 @@
 #include "esp_log.h"
 #include "tmc2209.h"
 
+#define TMC_VCC_PIN GPIO_NUM_6
+
+bool TMConfError = true;    //  helper
+
 void app_main(void)
 {
-    if (tmc2209_begin(UART_NUM_2, 200000, GPIO_NUM_17, GPIO_NUM_18)){   
+    if (tmc2209_begin(UART_NUM_2, 200000, GPIO_NUM_16, GPIO_NUM_15)){   //  GPIO_NUM_17 GPIO_NUM_18 for Bojack, GPIO_NUM_16 GPIO_NUM_15 for Dev
         // test status registru - version musí být 0x21
         union tmc2209_ioin status;
         if (tmc2209_readData(0,TMC2209_R_IOIN_R,&status.d)){    
@@ -70,14 +74,40 @@ void app_main(void)
                 chopconf.toff = 3; chopconf.tbl = 2; chopconf.hstrt = 4; chopconf.hend = 0;
                 ESP_LOGI("MAIN","CHOPCONF:= %lX",chopconf.d);
                 tmc2209_writeData(0,TMC2209_R_CHOPCONG_RW,chopconf.d);
+                
+                TMConfError = false;
+
+                union tmc2209_vactual velocity = {
+                    .d = 0,
+                    .vactual = 0
+                };
+                gpio_set_direction(TMC_VCC_PIN, GPIO_MODE_OUTPUT);
             }
         } else {
             ESP_LOGI("MAIN","0x06 - Driver IOIN read failed");
+            TMConfError = true;
         }
     }
     while (1)
     {
         vTaskDelay(1000);
+
+        if (!TMConfError) {
+            gpio_set_level(TMC_VCC_PIN, 0);
+            
+            velocity.vactual = 10;
+            tmc2209_writeData(0,TMC2209_R_VACTUAL_W,velocity.d);
+            ESP_LOGI("MAIN","VACTUAL:= %lX",velocity.d);
+
+            vTaskDelay(1000);
+
+            velocity.vactual = 0;
+            tmc2209_writeData(0,TMC2209_R_VACTUAL_W,velocity.d);
+            ESP_LOGI("MAIN","VACTUAL:= %lX",velocity.d);
+
+            gpio_set_level(TMC_VCC_PIN, 1);
+        }
+
     }
     tmc2209_end();
     ESP_LOGI("MAIN","UART driver removed");
