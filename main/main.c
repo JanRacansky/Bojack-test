@@ -72,8 +72,8 @@ void app_main(void)
                 ESP_LOGI("MAIN","PWMCONF:= %lX",pwm.d);
                 
                 chopconf.toff = 3; chopconf.tbl = 2; chopconf.hstrt = 4; chopconf.hend = 0;
-                ESP_LOGI("MAIN","CHOPCONF:= %lX",chopconf.d);
                 tmc2209_writeData(0,TMC2209_R_CHOPCONG_RW,chopconf.d);
+                ESP_LOGI("MAIN","CHOPCONF:= %lX",chopconf.d);
                 
                 TMConfError = false;
 
