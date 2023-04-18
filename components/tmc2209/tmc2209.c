@@ -7,7 +7,7 @@
 uart_port_t tmcUART = UART_NUM_2;
 
 // returns ture if ok, uses ESP_LOGI to log errors
-bool tmc2209_begin(uart_port_t uart,int baud_rate,int tx_io_num, int rx_io_num) {
+bool tmc2209_uart_begin(uart_port_t uart,int baud_rate,int tx_io_num, int rx_io_num) {
     const uart_config_t uart_config = {
         .baud_rate = baud_rate,
         .data_bits = UART_DATA_8_BITS,
@@ -115,5 +115,59 @@ bool tmc2209_readData(uint8_t addr, uint8_t reg, uint32_t *data)
     }
 
 	*data = ((uint32_t)buf[3] << 24) | ((uint32_t)buf[4] << 16) | (buf[5] << 8) | buf[6];
+    return true;
+}
+
+bool tmc2209_begin(){
+    union tmc2209_ioin status;
+    if (!tmc2209_readData(0,TMC2209_R_IOIN_R,&status.d)){
+        ESP_LOGI("MAIN","0x06 - Driver IOIN read failed");
+        return false;    
+    };
+
+    if (status.version!=0x21){
+        ESP_LOGI("TMC","0x06 - IOIN.vertsion != 0x21");
+        return false;
+    };
+
+    union tmc2209_chopconf chopconf = { 
+        .d = 0,
+        .toff = 0, .hstrt = 5, .vsense = 1, .intpol = 1, .tbl = 2   
+    };
+    // ESP_LOGI("MAIN","CHOPCONF:= %lX",chopconf.d);
+    tmc2209_writeData(0,TMC2209_R_CHOPCONG_RW,chopconf.d);
+
+    union tmc2209_gconf gconf = {
+        .d = 0,
+        .pdn_disable = 1, .mstep_reg_select = 1, .multistep_filt = 1
+    };
+    // ESP_LOGI("MAIN","GCONF:= %lX",gconf.d);
+    tmc2209_writeData(0,TMC2209_R_GCONF_RW,gconf.d);
+
+    union tmc2209_ihold_irun ihr = {
+        .d = 0,
+        .iholddelay = 1, .irun = 30, .ihold = 11    
+    };
+    // ESP_LOGI("MAIN","IHOLD_IRUN:= %lX",ihr.d);
+    tmc2209_writeData(0,TMC2209_R_IHOLD_IRUN_W,ihr.d);
+    
+    union tmc2209_tpowerdown tpw = {
+        .d = 0,
+        .tpowerdown = 20
+    };
+    // ESP_LOGI("MAIN","TPOWERDOWN:= %lX",tpw.d);
+    tmc2209_writeData(0,TMC2209_R_TPOWERDOWN_W,tpw.d);
+    
+    union tmc2209_pwmconf pwm = {
+        .d=0,
+        .pwm_ofs = 36, .pwm_freq = 1, .pwm_autoscale = 0, .pwm_autograd = 0, .pwm_reg = 1, .pwm_lim = 12
+    };
+    // ESP_LOGI("MAIN","PWMCONF:= %lX",pwm.d);
+    tmc2209_writeData(0,TMC2209_R_PWMCONF_RW,pwm.d);
+    
+    chopconf.toff = 3; chopconf.tbl = 2; chopconf.hstrt = 4; chopconf.hend = 0;
+    // ESP_LOGI("MAIN","CHOPCONF:= %lX",chopconf.d);
+    tmc2209_writeData(0,TMC2209_R_CHOPCONG_RW,chopconf.d);
+
     return true;
 }
