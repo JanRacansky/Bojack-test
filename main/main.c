@@ -18,7 +18,7 @@ bool TMConfError = true;    //  helper
 
 void app_main(void)
 {
-    if (tmc2209_begin(UART_NUM_2, 200000, GPIO_NUM_16, GPIO_NUM_15)){   //  GPIO_NUM_17 GPIO_NUM_18 for Bojack, GPIO_NUM_16 GPIO_NUM_15 for Dev
+    if (tmc2209_begin(UART_NUM_2, 200000, GPIO_NUM_17, GPIO_NUM_18)){   //  GPIO_NUM_17 GPIO_NUM_18 for Bojack, GPIO_NUM_16 GPIO_NUM_15 for Dev
         // test status registru - version musí být 0x21
         union tmc2209_ioin status;
         if (tmc2209_readData(0,TMC2209_R_IOIN_R,&status.d)){    
